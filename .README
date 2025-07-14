@@ -1,75 +1,121 @@
- Compression Efficiency by Size:
+# Netplay
 
-  | Message Size | Compression Ratio | Worth It? |
-  |--------------|-------------------|-----------|
-  | 0-50 bytes   | +20% larger       | ❌ Never   |
-  | 50-80 bytes  | ±0% (neutral)     | 🤷 Maybe  |
-  | 80+ bytes    | -20% to -60%      | ✅ Yes     |
-  | 500+ bytes   | -50% to -80%      | ✅ Always  |
+A high-performance Java NIO networking library designed for real-time multiplayer applications and client-server communication.
 
+## Features
 
-  Bottom line: For typical chat messages, compression kicks in around 80-100 bytes. Shorter messages should skip compression entirely.
+- **High Performance**: Built on Java NIO for non-blocking I/O operations
+- **Scalable**: Supports configurable concurrent connections with connection limits
+- **Server-Authoritative**: Designed for secure, server-controlled game logic and state management
+- **Secure Architecture**: Client libraries contain no server code, preventing reverse engineering of server logic
+- **Reflection-Based Registration**: Messages and actions registered using package paths with reflection via Reflections library
+- **Custom Binary Protocol**: Implements an efficient binary message protocol with compression support
+- **Message Serialization**: Automatic serialization/deserialization using annotations
+- **Modular Build System**: Separate client and server JAR builds using Gradle
 
+## Protocol
 
+The library implements a custom binary message protocol optimized for real-time communication:
 
+- **Message Structure**: Length (2 bytes) + Options (1 byte) + Type (2 bytes) + Payload
+- **Compression Support**: Optional GZIP compression for message payloads using `@NetworkMessageHandler(compressed = true)`
+- **Message Registry**: Annotation-based message type registration with `@NetworkMessageHandler`
+- **Serialization**: Property-based serialization using `@NetworkSerializableProperty` annotations
 
+## Getting Started
 
-Great question! Here are the most impactful improvements you could add:
+### Building the Library
 
-  High-Impact Additions
+The project uses Gradle with specialized tasks for building client and server components:
 
-  1. SSL/TLS Encryption 🔒
+```bash
+# Build client library (server code excluded)
+./gradlew clientJar
 
-  // Secure all client-server communication
-  SSLSocketChannel secureChannel = SSLContext.getDefault()...
-  Why: Makes it production-ready for real applications
+# Build server library (complete functionality)  
+./gradlew serverJar
 
-  2. Compression 📦
+# Build both libraries
+./gradlew build
+```
 
-  // Reduce bandwidth by 60-80%
-  @NetworkMessageHandler(CHAT_MESSAGE, compressed = true)
-  Why: Dramatically improves performance over slow networks
+### Chat Example
 
-  3. Reconnection Logic 🔄
+A complete chat system example is included to demonstrate the library's capabilities. The example showcases client connection management, username registration, real-time messaging, and system notifications.
 
-  // Auto-reconnect with exponential backoff
-  client.setAutoReconnect(true, maxAttempts: 5);
-  Why: Essential for mobile/unstable connections
+```bash
+# Build and run the chat server
+./gradlew chatServerJar
+java -jar build/libs/chat-server-1.0.0.jar
 
-  4. Protocol Versioning 📋
+# Build and run the chat client (in another terminal)
+./gradlew chatClientJar  
+java -jar build/libs/chat-client-1.0.0.jar
+```
 
-  // Handle client/server version mismatches
-  @ProtocolVersion("1.2.0")
-  public class NetworkMessage...
-  Why: Allows gradual updates without breaking existing clients
+For detailed implementation guidance, see the [Chat Example Documentation](https://github.com/nichnet/netplay/wiki/Chat-Example).
 
-  Performance Boosters
+## Documentation
 
-  5. Message Batching ⚡
+For comprehensive guides, tutorials, and API reference, visit the [Netplay Wiki](https://github.com/nichnet/netplay/wiki).
 
-  // Send multiple messages in one packet
-  client.batchMessages(msg1, msg2, msg3).send();
-  Why: Reduces network overhead significantly
+## Architecture
 
-  6. Connection Pooling 🏊
+### Package Structure
 
-  // Reuse connections efficiently
-  ConnectionPool.borrowConnection(serverId);
-  Why: Better resource utilization for high-traffic scenarios
+Organize your project with clear separation between client, server, and shared components:
 
-  Developer Experience
+```
+src/
+├── com/yourapp/shared/
+│   ├── Constants.java
+│   └── network/
+│       ├── messages/
+│       └── actions/
+├── com/yourapp/server/
+│   ├── MyServer.java
+│   └── network/
+│       └── actions/
+└── com/yourapp/client/
+    ├── MyClient.java
+    └── network/
+        └── actions/
+```
 
-  7. Configuration System ⚙️
+## Requirements
 
-  // netplay.properties
-  server.port=8080
-  server.maxConnections=100
-  ssl.enabled=true
-  Why: Makes deployment and testing much easier
+- Java 11 or higher
+- Gradle (for building)
+- Reflections library (org.reflections:reflections) - included as dependency
 
-  8. Monitoring/Metrics 📊
+## Key Classes
 
-  // Built-in performance tracking
-  NetworkMetrics.getConnectedUsers();
-  NetworkMetrics.getMessageRate();
-  Why: Essential for debugging and optimization
+- **`Server`**: Abstract base class for server implementation
+- **`Client`**: Abstract base class for client implementation  
+- **`NetworkConnection`**: Represents a client connection on the server
+- **`NetworkMessage`**: Container for all network messages
+- **`NetworkSerializable`**: Base class for serializable message content
+- **`NetworkMessageRegistry`**: Manages message type registration and creation
+- **`NetworkActions`**: Base class for organizing action handlers
+
+## Contributing
+
+Issues and feature requests are welcome! Please feel free to:
+- Report bugs or performance issues
+- Suggest new features or improvements
+- Submit questions about implementation
+
+## Support
+
+For questions, issues, or feature requests, please use the GitHub Issues system.
+
+## License
+
+This project is distributed under a custom license:
+
+- ✅ **Permitted**: Use in your applications (commercial or non-commercial) with attribution
+- ✅ **Permitted**: Modify for your own use
+- ❌ **Not Permitted**: Redistribution of source code or modified versions
+- ❌ **Not Permitted**: Publishing forks or derivatives
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
