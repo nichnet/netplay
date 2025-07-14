@@ -86,7 +86,7 @@ Register your message and action packages using reflection:
 
 ```java
 // Server registration
-public class GameServer {
+public class GameServer extends Server {
   public GameServer() {
     MessageRegistry.registerByPackage("com.yourapp.shared.network.messages", "com.yourapp.server.network.messages");
     ActionRegistry.registerByPackage("com.yourapp.shared.network.actions", "com.yourapp.server.network.actions");
@@ -96,7 +96,7 @@ public class GameServer {
 
 ```java
 // Client registration
-public class GameServer {
+public class GameServer extends Client {
   public GameServer() {
     MessageRegistry.registerByPackage("com.yourapp.shared.network.messages", "com.yourapp.client.network.messages");
     ActionRegistry.registerByPackage("com.yourapp.shared.network.actions", "com.yourapp.client.network.actions");
