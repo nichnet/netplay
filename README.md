@@ -5,19 +5,22 @@ A high-performance Java NIO networking library designed for real-time multiplaye
 ## Features
 
 - **High Performance**: Built on Java NIO for non-blocking I/O operations
-- **Scalable**: Supports thousands of concurrent connections
+- **Scalable**: Supports configurable concurrent connections with connection limits
 - **Server-Authoritative**: Designed for secure, server-controlled game logic and state management
 - **Secure Architecture**: Client libraries contain no server code, preventing reverse engineering of server logic
-- **Reflection-Based Registration**: Messages and actions can be registered using package paths with reflection
-- **Custom Protocol**: Implements a binary message protocol for efficient communication
+- **Reflection-Based Registration**: Messages and actions registered using package paths with reflection via Reflections library
+- **Custom Binary Protocol**: Implements an efficient binary message protocol with compression support
+- **Message Serialization**: Automatic serialization/deserialization using annotations
 - **Modular Build System**: Separate client and server JAR builds using Gradle
-
-- Documentation
-For comprehensive guides, tutorials, and API reference, visit the [Netplay Wiki](https://github.com/nichnet/netplay/wiki).
 
 ## Protocol
 
-The library implements a custom binary message protocol optimized for real-time communication. For detailed protocol specification, see: [Message Protocol Documentation]()
+The library implements a custom binary message protocol optimized for real-time communication:
+
+- **Message Structure**: Length (2 bytes) + Options (1 byte) + Type (2 bytes) + Payload
+- **Compression Support**: Optional GZIP compression for message payloads using `@NetworkMessageHandler(compressed = true)`
+- **Message Registry**: Annotation-based message type registration with `@NetworkMessageHandler`
+- **Serialization**: Property-based serialization using `@NetworkSerializableProperty` annotations
 
 ## Getting Started
 
@@ -27,93 +30,76 @@ The project uses Gradle with specialized tasks for building client and server co
 
 ```bash
 # Build client library (server code excluded)
-./gradlew jarClient
+./gradlew clientJar
 
-# Build server library (complete functionality)
-./gradlew jarServer
+# Build server library (complete functionality)  
+./gradlew serverJar
+
+# Build both libraries
+./gradlew build
 ```
 
-### Running the Chat Example
+### Chat Example
 
-A complete chat system example is included to demonstrate the library's capabilities:
+A complete chat system example is included to demonstrate the library's capabilities. The example showcases client connection management, username registration, real-time messaging, and system notifications.
 
 ```bash
-# Start the example server
-./gradlew exampleServer
+# Build and run the chat server
+./gradlew chatServerJar
+java -jar build/libs/chat-server-1.0.0.jar
 
-# Start the example client
-./gradlew exampleClient
+# Build and run the chat client (in another terminal)
+./gradlew chatClientJar  
+java -jar build/libs/chat-client-1.0.0.jar
 ```
 
-The chat example showcases:
-- Client connection management
-- Username registration
-- Real-time messaging
-- System notifications (join/leave events)
-- Multi-user chat rooms
+For detailed implementation guidance, see the [Chat Example Documentation](https://github.com/nichnet/netplay/wiki/Chat-Example).
+
+## Documentation
+
+For comprehensive guides, tutorials, and API reference, visit the [Netplay Wiki](https://github.com/nichnet/netplay/wiki).
 
 ## Architecture
 
-### Recommended Package Structure
+### Package Structure
 
-For optimal organization and security, structure your project packages as follows:
+Organize your project with clear separation between client, server, and shared components:
 
 ```
-com.yourapp.shared/
-├── network/
-    ├── actions/
-    └── messages/
-└── whatever../
-
-com.yourapp.server/
-├── network/
-    ├── actions/
-    ├── messages/
-    └── GameServer.java
-└── whatever../
-
-com.yourapp.client/
-├── network/
-    ├── actions/
-    ├── messages/
-    └── GameClient.java
-└── whatever../
+src/
+├── com/yourapp/shared/
+│   ├── whatever../
+│   ├── Constants.java
+│   └── network/
+│       ├── messages/
+│       └── actions/
+├── com/yourapp/server/
+│   ├── whatever../
+│   └── network/
+│       ├── actions/
+|       └── MyServer.java
+└── com/yourapp/client/
+    ├── whatever../
+    └── network/
+        ├── actions/
+        └── MyClient.java
 ```
-
-### Message Registration
-
-Register your message and action packages using reflection:
-
-```java
-// Server registration
-public class GameServer extends Server {
-  public GameServer() {
-    MessageRegistry.registerByPackage("com.yourapp.shared.network.messages", "com.yourapp.server.network.messages");
-    ActionRegistry.registerByPackage("com.yourapp.shared.network.actions", "com.yourapp.server.network.actions");
-  }
-}
-```
-
-```java
-// Client registration
-public class GameServer extends Client {
-  public GameServer() {
-    MessageRegistry.registerByPackage("com.yourapp.shared.network.messages", "com.yourapp.client.network.messages");
-    ActionRegistry.registerByPackage("com.yourapp.shared.network.actions", "com.yourapp.client.network.actions");
-  }
-}
-```
-
-### Client-Server Separation
-
-- **Client JAR**: Contains only client-side and shared networking code
-- **Server JAR**: Contains full server implementation with connection management
-- **Important**: Exclude server packages from client builds to prevent server logic exposure
 
 ## Requirements
 
-- Java 8 or higher
+- Java 11 or higher
 - Gradle (for building)
+- Reflections library (org.reflections:reflections) - included as dependency
+
+## Key Classes
+
+- **`Server`**: Abstract base class for server implementation
+- **`Client`**: Abstract base class for client implementation  
+- **`NetworkConnection`**: Represents a client connection on the server
+- **`NetworkMessage`**: Container for all network messages
+- **`NetworkSerializable`**: Base class for serializable message content
+- **`NetworkMessageRegistry`**: Manages message type registration and creation
+- **`NetworkActions`**: Base class for organizing action handlers
 
 ## Contributing
 
@@ -122,19 +108,13 @@ Issues and feature requests are welcome! Please feel free to:
 - Suggest new features or improvements
 - Submit questions about implementation
 
-## Support
-
-For questions, issues, or feature requests, please use the GitHub Issues system. While we welcome community input, please note that response times and feature implementation are not guaranteed.
-
 ## License
 
 This project is distributed under a custom license:
 
-- ✅ **Permitted**: Use in your applications (commercial or non-commercial with) with attribution
+- ✅ **Permitted**: Use in your applications (commercial or non-commercial) with attribution
 - ✅ **Permitted**: Modify for your own use
 - ❌ **Not Permitted**: Redistribution of source code or modified versions
 - ❌ **Not Permitted**: Publishing forks or derivatives
-
-**Recommended Usage**: Use the pre-built JARs provided in releases rather than building from source.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
