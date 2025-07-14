@@ -12,6 +12,9 @@ A high-performance Java NIO networking library designed for real-time multiplaye
 - **Custom Protocol**: Implements a binary message protocol for efficient communication
 - **Modular Build System**: Separate client and server JAR builds using Gradle
 
+- Documentation
+For comprehensive guides, tutorials, and API reference, visit the [Netplay Wiki](https://github.com/nichnet/netplay/wiki).
+
 ## Protocol
 
 The library implements a custom binary message protocol optimized for real-time communication. For detailed protocol specification, see: [Message Protocol Documentation]()
