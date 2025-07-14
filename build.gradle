@@ -1,0 +1,97 @@
+plugins {
+    id 'java-library'
+}
+
+group = 'com.netplay'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.reflections:reflections:0.10.2'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+    }
+}
+
+task clientJar(type: Jar) {
+    group = 'build'
+    description = 'Builds client JAR with shared dependencies'
+    archiveBaseName = 'netplay-client'
+    from sourceSets.main.output
+    include 'com/netplay/client/**'
+    include 'com/netplay/shared/**'
+    
+    // Include dependencies for standalone library
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task serverJar(type: Jar) {
+    group = 'build'
+    description = 'Builds server JAR with shared dependencies'
+    archiveBaseName = 'netplay-server'
+    from sourceSets.main.output
+    include 'com/netplay/server/**'
+    include 'com/netplay/shared/**'
+    
+    // Include dependencies for standalone library
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task chatClientJar(type: Jar) {
+    group = 'example'
+    description = 'Builds chat client example JAR'
+    archiveBaseName = 'chat-client'
+    from sourceSets.main.output
+    
+    // Include dependencies for standalone application
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    manifest {
+        attributes 'Main-Class': 'com.netplay.example.client.ChatClientApp'
+    }
+}
+
+task chatServerJar(type: Jar) {
+    group = 'example'
+    description = 'Builds chat server example JAR'
+    archiveBaseName = 'chat-server'
+    from sourceSets.main.output
+    
+    // Include dependencies for standalone application
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    manifest {
+        attributes 'Main-Class': 'com.netplay.example.server.ChatServerApp'
+    }
+}
+
+build.dependsOn clientJar, serverJar, chatClientJar, chatServerJar
