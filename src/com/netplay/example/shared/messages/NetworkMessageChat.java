@@ -1,11 +1,8 @@
 package com.netplay.example.shared.messages;
 
-import com.netplay.example.shared.Constants;
 import com.netplay.shared.NetworkSerializable;
 import com.netplay.shared.NetworkSerializableProperty;
-import com.netplay.shared.messages.NetworkMessageHandler;
 
-@NetworkMessageHandler(value = Constants.NETWORK_MESSAGE_CHAT, compressed = true)
 public class NetworkMessageChat extends NetworkSerializable {
     private String sender, message;
 

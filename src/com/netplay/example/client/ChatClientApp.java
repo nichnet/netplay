@@ -22,6 +22,7 @@ public class ChatClientApp {
         
         MyClient client = new MyClient();
         client.setUsername(username);
+        client.registerHandlerPackages("com.netplay.example.client");
 
         System.out.print("Enter server host (or press Enter for localhost): ");
         String host = scanner.nextLine().trim();

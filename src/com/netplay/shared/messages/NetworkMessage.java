@@ -34,27 +34,11 @@ public class NetworkMessage {
   public NetworkMessage(int messageTypeId, NetworkSerializable payload) {
     this.messageTypeId = messageTypeId;
     
-    // Check if the payload class has compression enabled
-    boolean shouldCompress = false;
-    NetworkMessageHandler annotation = payload.getClass().getAnnotation(NetworkMessageHandler.class);
-    if (annotation != null) {
-      shouldCompress = annotation.compressed();
-    }
+    // For now, disable compression by default - can be enabled via NetworkMessageOptions constructor
+    this.options = NetworkMessageOptions.builder().compressed(false).build();
     
-    // Set options based on compression
-    this.options = NetworkMessageOptions.builder().compressed(shouldCompress).build();
-    
-    // Serialize and optionally compress payload
-    byte[] serializedPayload = payload.serialize();
-    if (shouldCompress) {
-      try {
-        this.payload = CompressionUtil.compress(serializedPayload);
-      } catch (IOException e) {
-        throw new RuntimeException("Failed to compress message payload", e);
-      }
-    } else {
-      this.payload = serializedPayload;
-    }
+    // Serialize payload
+    this.payload = payload.serialize();
   }
 
   public int length() {
@@ -107,10 +91,20 @@ public class NetworkMessage {
   }
 
   public <T extends NetworkSerializable> T deserialize(Class<T> clazz) throws Exception {
+    // Get payload and decompress if needed
+    byte[] actualPayload = payload;
+    if (options.isCompressed()) {
+      try {
+        actualPayload = CompressionUtil.decompress(payload);
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to decompress message payload", e);
+      }
+    }
+
     // Use reflection to call static deserialize method on the class
     Method method = clazz.getMethod("deserialize", byte[].class);
     @SuppressWarnings("unchecked")
-    T obj = (T) method.invoke(null, (Object) payload);
+    T obj = (T) method.invoke(null, (Object) actualPayload);
     return obj;
   }
 

@@ -1,9 +1,8 @@
 package com.netplay.client;
 
 import com.netplay.shared.NetworkConstants;
-import com.netplay.shared.actions.NetworkActions;
+import com.netplay.shared.events.NetworkEventBus;
 import com.netplay.shared.messages.NetworkMessage;
-import com.netplay.shared.messages.NetworkMessageRegistry;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -27,19 +26,17 @@ public abstract class Client {
   private Thread readerThread;
   private ByteBuffer readBuffer;
 
-  private NetworkActions clientActions;
+  private NetworkEventBus eventBus;
 
   public Client() {
     instance = this;
     this.readBuffer = ByteBuffer.allocate(NetworkConstants.BUFFER_SIZE);
+    this.eventBus = new NetworkEventBus();
   }
 
-  public final void registerMessagePackages(String... packagePaths) throws Exception {
-    new NetworkMessageRegistry(packagePaths);
-  }
 
-  public final void registerActions(NetworkActions clientActions) {
-    this.clientActions = clientActions;
+  public final void registerHandlerPackages(String... packageNames) {
+    eventBus.registerHandlers(packageNames);
   }
 
   public final void connect(String host, int port, String username, String password) {
@@ -178,7 +175,7 @@ public abstract class Client {
         // the sake of it mark it as from the server.
         networkMessage.setSenderConnectionId("SERVER");
 
-        clientActions.handleReceivedMessage(networkMessage);
+        eventBus.handleReceivedMessage(networkMessage);
       }
     }
   }

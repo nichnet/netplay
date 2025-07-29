@@ -1,9 +1,8 @@
 package com.netplay.server;
 
 import com.netplay.shared.NetworkConstants;
-import com.netplay.shared.actions.NetworkActions;
+import com.netplay.shared.events.NetworkEventBus;
 import com.netplay.shared.messages.NetworkMessage;
-import com.netplay.shared.messages.NetworkMessageRegistry;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -28,14 +27,15 @@ public abstract class Server {
   private final ConcurrentHashMap<String, NetworkConnection> connections = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<SocketChannel, NetworkConnection> channelToConnection = new ConcurrentHashMap<>();
 
-  private NetworkActions serverActions;
+  private NetworkEventBus eventBus;
 
-  public final void registerMessagePackages(String... packagePaths) throws Exception {
-    new NetworkMessageRegistry(packagePaths);
+  public Server() {
+    this.eventBus = new NetworkEventBus();
   }
 
-  public final void registerActions(NetworkActions serverActions) {
-    this.serverActions = serverActions;
+
+  public final void registerHandlerPackages(String... packageNames) {
+    eventBus.registerHandlers(packageNames);
   }
 
   public final void start(String host, int port) {
@@ -162,7 +162,7 @@ public abstract class Server {
         NetworkMessage networkMessage = NetworkMessage.fromBytes(bytes);
         networkMessage.setSenderConnectionId(connection.getId());
 
-        serverActions.handleReceivedMessage(networkMessage);
+        eventBus.handleReceivedMessage(networkMessage);
       }
     }
   }

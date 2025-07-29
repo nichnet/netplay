@@ -39,6 +39,7 @@ public class ChatServerApp {
         
         MyServer server = new MyServer();
         server.setMaxConnections(maxConnections);
+        server.registerHandlerPackages("com.netplay.example.server");
         
         System.out.println("Starting chat server on " + host + ":" + port + " (max " + maxConnections + " connections)");
         server.start(host, port);

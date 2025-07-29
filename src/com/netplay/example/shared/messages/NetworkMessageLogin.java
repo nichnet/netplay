@@ -1,11 +1,8 @@
 package com.netplay.example.shared.messages;
 
-import com.netplay.example.shared.Constants;
 import com.netplay.shared.NetworkSerializable;
 import com.netplay.shared.NetworkSerializableProperty;
-import com.netplay.shared.messages.NetworkMessageHandler;
 
-@NetworkMessageHandler(Constants.NETWORK_MESSAGE_LOGIN)
 public class NetworkMessageLogin extends NetworkSerializable {
     private String username;
 

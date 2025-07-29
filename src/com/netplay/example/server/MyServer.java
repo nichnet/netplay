@@ -1,6 +1,5 @@
 package com.netplay.example.server;
 
-import com.netplay.example.server.actions.ServerActions;
 import com.netplay.example.shared.Constants;
 import com.netplay.example.shared.messages.NetworkMessageNotification;
 import com.netplay.server.NetworkConnection;
@@ -15,15 +14,6 @@ public class MyServer extends Server {
 
     public MyServer() {
         instance = this;
-        try {
-            registerMessagePackages(
-                    "com.netplay.example.shared.messages",
-                    "com.netplay.example.server.messages"
-            );
-            registerActions(new ServerActions());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     @Override

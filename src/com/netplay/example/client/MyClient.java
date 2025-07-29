@@ -1,7 +1,6 @@
 package com.netplay.example.client;
 
 import com.netplay.client.Client;
-import com.netplay.example.client.actions.ClientActions;
 import com.netplay.example.shared.Constants;
 import com.netplay.example.shared.messages.NetworkMessageLogin;
 import com.netplay.shared.messages.NetworkMessage;
@@ -13,15 +12,6 @@ public class MyClient extends Client {
 
     public MyClient() {
         instance = this;
-        try {
-            registerMessagePackages(
-                    "com.netplay.example.shared.messages",
-                    "com.netplay.example.client.messages"
-            );
-            registerActions(new ClientActions());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
