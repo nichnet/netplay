@@ -101,10 +101,9 @@ public class NetworkMessage {
       }
     }
 
-    // Use reflection to call static deserialize method on the class
-    Method method = clazz.getMethod("deserialize", byte[].class);
-    @SuppressWarnings("unchecked")
-    T obj = (T) method.invoke(null, (Object) actualPayload);
+    // Create new instance and deserialize using interface method
+    T obj = clazz.getDeclaredConstructor().newInstance();
+    obj.readFrom(actualPayload);
     return obj;
   }
 

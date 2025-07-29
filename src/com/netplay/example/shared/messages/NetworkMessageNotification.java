@@ -3,7 +3,7 @@ package com.netplay.example.shared.messages;
 import com.netplay.shared.NetworkSerializable;
 import com.netplay.shared.NetworkSerializableProperty;
 
-public class NetworkMessageNotification extends NetworkSerializable {
+public class NetworkMessageNotification implements NetworkSerializable {
     private String message;
 
     public NetworkMessageNotification() {} // Required for factory
@@ -15,11 +15,6 @@ public class NetworkMessageNotification extends NetworkSerializable {
     @NetworkSerializableProperty(0)
     public String getMessage() { return message; }
 
-    public static NetworkMessageNotification deserialize(byte[] data) throws Exception {
-        NetworkMessageNotification msg = new NetworkMessageNotification();
-        msg.readFrom(data);
-        return msg;
-    }
 
     @Override
     public String toString() {

@@ -42,7 +42,7 @@ public class ChatClientApp {
             }
         }
         
-        client.connect(host, port, username, "");
+        client.connect(host, port);
         
         // Wait a moment for connection
         try {

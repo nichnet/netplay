@@ -304,6 +304,11 @@ public abstract class Server {
     return connections.size();
   }
 
+  public final boolean isUesrConnected(String id) {
+    NetworkConnection connection = getConnection(id);
+    return connection != null && connection.isConnected();
+  }
+
   public final void setMaxConnections(int maxConnections) {
     if (isRunning()) {
       System.err.println("Cannot set the server max connections whilst it is running.");

@@ -17,8 +17,6 @@ public abstract class Client {
 
   private String host;
   private int port;
-  private String username;
-  private String password;
   private boolean connected;
 
   private SocketChannel socketChannel;
@@ -39,16 +37,14 @@ public abstract class Client {
     eventBus.registerHandlers(packageNames);
   }
 
-  public final void connect(String host, int port, String username, String password) {
-    if (host == null || username == null || password == null) {
-      System.out.print("Could not connect. Missing credentials.");
+  public final void connect(String host, int port) {
+    if (host == null) {
+      System.out.print("Could not connect. Missing host.");
       return;
     }
 
     this.host = host;
     this.port = port;
-    this.username = username;
-    this.password = password;
 
     try {
       System.out.println("Connecting to server at " + host + ":" + port);
@@ -194,14 +190,6 @@ public abstract class Client {
 
   public final String getAddress() {
     return getHost() + ":" + getPort();
-  }
-
-  public String getUsername() {
-    return username;
-  }
-
-  public String getPassword() {
-    return password;
   }
 
   public static Client getInstance() {
