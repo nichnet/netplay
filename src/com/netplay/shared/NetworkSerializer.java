@@ -10,8 +10,6 @@ import java.util.Comparator;
 
 /**
  * Utility class for serializing and deserializing NetworkSerializable objects.
- * Moved from the abstract class to support interface-based approach that allows
- * objects with different inheritance hierarchies to be serialized.
  */
 public class NetworkSerializer {
 
@@ -104,8 +102,19 @@ public class NetworkSerializer {
             // Read the item data into the byte array
             dataIn.readFully(itemData);
 
-            // Deserialize the item using the provided class's static deserialize method
-            array[i] = (T) clazz.getMethod("deserialize", byte[].class).invoke(null, itemData);
+            // Try to use readFrom method first, fallback to static deserialize method if available
+            try {
+                T instance = clazz.getDeclaredConstructor().newInstance();
+                instance.readFrom(itemData);
+                array[i] = instance;
+            } catch (Exception e) {
+                // Fallback to static deserialize method if readFrom fails
+                try {
+                    array[i] = (T) clazz.getMethod("deserialize", byte[].class).invoke(null, itemData);
+                } catch (Exception fallbackException) {
+                    throw e; // Rethrow original exception
+                }
+            }
         }
 
         return array;
@@ -193,9 +202,20 @@ public class NetworkSerializer {
             byte[] nestedData = new byte[nestedDataLength];
             input.readFully(nestedData);
 
-            // Use reflection to call the deserialize method on the nested object
-            Method deserializeMethod = type.getMethod("deserialize", byte[].class);
-            return deserializeMethod.invoke(null, nestedData);
+            // Try to use readFrom method first, fallback to static deserialize method if available  
+            try {
+                Object instance = type.getDeclaredConstructor().newInstance();
+                ((NetworkSerializable) instance).readFrom(nestedData);
+                return instance;
+            } catch (Exception e) {
+                // Fallback to static deserialize method if readFrom fails
+                try {
+                    Method deserializeMethod = type.getMethod("deserialize", byte[].class);
+                    return deserializeMethod.invoke(null, nestedData);
+                } catch (Exception fallbackException) {
+                    throw e; // Rethrow original exception
+                }
+            }
         } else {
             throw new UnsupportedOperationException("Unsupported type: " + type);
         }

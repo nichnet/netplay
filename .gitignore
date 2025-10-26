@@ -4,6 +4,8 @@ gradle-*.zip
 out/
 .gradle
 .idea
+.claude
+*.class
 !**/src/main/**/out/
 !**/src/test/**/out/
 

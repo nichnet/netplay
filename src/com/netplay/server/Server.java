@@ -145,24 +145,40 @@ public abstract class Server {
     if (bytesRead > 0) {
       buffer.flip();
 
-      // Process all complete messages in the buffer
-      while (buffer.remaining() >= 2) {
-        // Check if we have at least 2 bytes to read the message length
-        int messageLength = buffer.getShort(buffer.position()) & 0xFFFF;
-        int totalMessageSize = messageLength + 2; // +2 for the length field itself
+      // Process all complete chunks in the buffer
+      while (buffer.remaining() >= 1) {
+        // Read chunk header to determine chunk size
+        byte header = buffer.get(buffer.position());
 
-        // Check if we have the complete message
-        if (buffer.remaining() < totalMessageSize) {
-          break; // Wait for more data
+        // For now, we'll read the entire remaining buffer as a chunk
+        // (since chunks are variable size, we read what we have)
+        int chunkSize = buffer.remaining();
+        if (chunkSize > NetworkConstants.BUFFER_SIZE) {
+          chunkSize = NetworkConstants.BUFFER_SIZE;
         }
 
-        // We have a complete message, extract it
-        byte[] bytes = new byte[totalMessageSize];
-        buffer.get(bytes);
-        NetworkMessage networkMessage = NetworkMessage.fromBytes(bytes);
-        networkMessage.setSenderConnectionId(connection.getId());
+        // Extract chunk
+        byte[] chunkBytes = new byte[chunkSize];
+        buffer.get(chunkBytes);
 
-        eventBus.handleReceivedMessage(networkMessage);
+        // Process chunk and check if it completes a message
+        byte[] completeMessage = connection.processChunk(chunkBytes);
+
+        if (completeMessage != null) {
+          // Message is complete, parse and handle it
+          try {
+            NetworkMessage networkMessage = NetworkMessage.fromBytes(completeMessage);
+            networkMessage.setSenderConnectionId(connection.getId());
+            eventBus.handleReceivedMessage(networkMessage);
+          } catch (IOException e) {
+            System.err.println("Error parsing message from " + connection.getId() + ": " + e.getMessage());
+          }
+        }
+
+        // If we consumed all data, break out
+        if (!buffer.hasRemaining()) {
+          break;
+        }
       }
     }
   }

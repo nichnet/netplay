@@ -1,5 +1,6 @@
 package com.netplay.client;
 
+import com.netplay.shared.MessageChunker;
 import com.netplay.shared.NetworkConstants;
 import com.netplay.shared.events.NetworkEventBus;
 import com.netplay.shared.messages.NetworkMessage;
@@ -10,6 +11,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 public abstract class Client {
@@ -26,10 +28,16 @@ public abstract class Client {
 
   private NetworkEventBus eventBus;
 
+  // For reassembling chunked messages
+  private byte[] messageReassemblyBuffer;
+  private int messageReassemblyOffset;
+
   public Client() {
     instance = this;
     this.readBuffer = ByteBuffer.allocate(NetworkConstants.BUFFER_SIZE);
     this.eventBus = new NetworkEventBus();
+    this.messageReassemblyBuffer = null;
+    this.messageReassemblyOffset = 0;
   }
 
 
@@ -92,7 +100,14 @@ public abstract class Client {
   public final void sendNetworkMessage(NetworkMessage networkMessage) {
     if (connected && socketChannel != null && socketChannel.isConnected()) {
       try {
-        socketChannel.write(ByteBuffer.wrap(networkMessage.toBytes()));
+        // Chunk the message if needed
+        byte[] messageBytes = networkMessage.toBytes();
+        List<byte[]> chunks = MessageChunker.chunkMessage(messageBytes);
+
+        // Send each chunk
+        for (byte[] chunk : chunks) {
+          socketChannel.write(ByteBuffer.wrap(chunk));
+        }
       } catch (IOException e) {
         System.err.println("Error sending message: " + e.getMessage());
         connected = false;
@@ -150,28 +165,43 @@ public abstract class Client {
     if (bytesRead > 0) {
       readBuffer.flip();
 
-      // Process all complete messages in the buffer
-      while (readBuffer.remaining() >= 2) {
-        // Check if we have at least 2 bytes to read the message length
-        int messageLength = readBuffer.getShort(readBuffer.position()) & 0xFFFF;
-        int totalMessageSize = messageLength + 2; // +2 for the length field itself
+      // Process all complete chunks in the buffer
+      while (readBuffer.remaining() >= 1) {
+        // Read chunk header to determine chunk size
+        byte header = readBuffer.get(readBuffer.position());
 
-        // Check if we have the complete message
-        if (readBuffer.remaining() < totalMessageSize) {
-          break; // Wait for more data
+        // Read the entire remaining buffer as a chunk
+        int chunkSize = readBuffer.remaining();
+        if (chunkSize > NetworkConstants.BUFFER_SIZE) {
+          chunkSize = NetworkConstants.BUFFER_SIZE;
         }
 
-        // We have a complete message, extract it
-        byte[] bytes = new byte[totalMessageSize];
-        readBuffer.get(bytes);
+        // Extract chunk
+        byte[] chunkBytes = new byte[chunkSize];
+        readBuffer.get(chunkBytes);
 
-        NetworkMessage networkMessage = NetworkMessage.fromBytes(bytes);
-        // It's irrelevant to set the message sender id because
-        // messages can only come from the server, but just for
-        // the sake of it mark it as from the server.
-        networkMessage.setSenderConnectionId("SERVER");
+        // Process chunk and check if it completes a message
+        byte[] completeMessage = processChunk(chunkBytes);
 
-        eventBus.handleReceivedMessage(networkMessage);
+        if (completeMessage != null) {
+          // Message is complete, parse and handle it
+          try {
+            NetworkMessage networkMessage = NetworkMessage.fromBytes(completeMessage);
+            // It's irrelevant to set the message sender id because
+            // messages can only come from the server, but just for
+            // the sake of it mark it as from the server.
+            networkMessage.setSenderConnectionId("SERVER");
+
+            eventBus.handleReceivedMessage(networkMessage);
+          } catch (IOException e) {
+            System.err.println("Error parsing message from server: " + e.getMessage());
+          }
+        }
+
+        // If we consumed all data, break out
+        if (!readBuffer.hasRemaining()) {
+          break;
+        }
       }
     }
   }
@@ -210,5 +240,62 @@ public abstract class Client {
       return;
     }
     this.port = port;
+  }
+
+  /**
+   * Process a chunk and reassemble if needed.
+   * @param chunkBytes the chunk bytes (including header)
+   * @return the complete message if this was the final chunk, null otherwise
+   */
+  private byte[] processChunk(byte[] chunkBytes) {
+    if (chunkBytes.length == 0) {
+      return null;
+    }
+
+    byte header = chunkBytes[0];
+    byte[] chunkData = MessageChunker.extractChunkData(chunkBytes);
+
+    boolean isContinuation = MessageChunker.isContinuation(header);
+    boolean hasMore = MessageChunker.hasMore(header);
+
+    // First chunk of a message
+    if (!isContinuation) {
+      // Start new reassembly
+      if (hasMore) {
+        // Multi-chunk message starting
+        messageReassemblyBuffer = new byte[NetworkConstants.MAX_MESSAGE_SIZE];
+        messageReassemblyOffset = 0;
+        System.arraycopy(chunkData, 0, messageReassemblyBuffer, messageReassemblyOffset, chunkData.length);
+        messageReassemblyOffset += chunkData.length;
+        return null; // Not complete yet
+      } else {
+        // Single-chunk message
+        return chunkData;
+      }
+    } else {
+      // Continuation chunk
+      if (messageReassemblyBuffer == null) {
+        System.err.println("Received continuation chunk without starting chunk - discarding");
+        return null;
+      }
+
+      // Append to reassembly buffer
+      System.arraycopy(chunkData, 0, messageReassemblyBuffer, messageReassemblyOffset, chunkData.length);
+      messageReassemblyOffset += chunkData.length;
+
+      if (!hasMore) {
+        // Final chunk - extract complete message
+        byte[] completeMessage = new byte[messageReassemblyOffset];
+        System.arraycopy(messageReassemblyBuffer, 0, completeMessage, 0, messageReassemblyOffset);
+
+        // Reset reassembly state
+        messageReassemblyBuffer = null;
+        messageReassemblyOffset = 0;
+
+        return completeMessage;
+      }
+
+      return null; // More chunks expected
+    }
   }
 }
