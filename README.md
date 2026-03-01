@@ -1,47 +1,136 @@
 # Netplay
 
-A high-performance Java NIO networking library designed for real-time multiplayer applications and client-server communication.
+A lightweight Java NIO networking library designed for real-time multiplayer applications and client-server communication.
 
 ## Features
 
 - **High Performance**: Built on Java NIO for non-blocking I/O operations
-- **Scalable**: Supports configurable concurrent connections with connection limits
-- **Server-Authoritative**: Designed for secure, server-controlled game logic and state management
-- **Secure Architecture**: Client libraries contain no server code, preventing reverse engineering of server logic
-- **Reflection-Based Registration**: Messages and actions registered using package paths with reflection via Reflections library
-- **Custom Binary Protocol**: Implements an efficient binary message protocol with compression support
-- **Message Serialization**: Automatic serialization/deserialization using annotations
+- **Zero Reflection**: No runtime reflection or annotation scanning
+- **Pluggable Serialization**: Bring your own serializer or use the included JSON serializer
+- **Simple API**: Explicit handler registration with a clean, static API
+- **Class-Based Routing**: Messages routed by class name, no integer type IDs needed
 - **Modular Build System**: Separate client and server JAR builds using Gradle
 
-## Protocol
+## Wire Format
 
-The library implements a custom binary message protocol optimized for real-time communication:
-
-- **Message Structure**: Length (2 bytes) + Options (1 byte) + Type (2 bytes) + Payload
-- **Compression Support**: Optional GZIP compression for message payloads using `@NetworkMessageHandler(compressed = true)`
-- **Message Registry**: Annotation-based message type registration with `@NetworkMessageHandler`
-- **Serialization**: Property-based serialization using `@NetworkSerializableProperty` annotations
+Messages use a simple newline-delimited text format:
+```
+ClassName\n
+{"json":"body"}\n
+```
 
 ## Getting Started
 
 ### Building the Library
 
-The project uses Gradle with specialized tasks for building client and server components:
-
 ```bash
-# Build client library (server code excluded)
+# Build client library
 ./gradlew clientJar
 
-# Build server library (complete functionality)  
+# Build server library
 ./gradlew serverJar
 
 # Build both libraries
 ./gradlew build
 ```
 
+### Basic Usage
+
+#### 1. Define Message Classes
+
+Simple POJOs - no interfaces or annotations required:
+
+```java
+public class ChatMessage {
+    private String sender;
+    private String message;
+
+    public ChatMessage() {}
+
+    public ChatMessage(String sender, String message) {
+        this.sender = sender;
+        this.message = message;
+    }
+
+    public String getSender() { return sender; }
+    public String getMessage() { return message; }
+}
+```
+
+#### 2. Configure and Register Handlers
+
+```java
+// Set up serializer (do this once at startup)
+Network.setSerializer(new JsonSerializer());
+
+// Register message handlers
+Network.on(ChatMessage.class, (msg, senderId) -> {
+    System.out.println(msg.getSender() + ": " + msg.getMessage());
+});
+```
+
+#### 3. Send Messages
+
+```java
+// From client to server
+client.send(new ChatMessage("Alice", "Hello!"));
+
+// From server to specific client
+Network.send(connectionId, new ChatMessage("Server", "Welcome!"));
+
+// Broadcast to all clients
+Network.broadcast(new ChatMessage("Server", "Announcement"));
+
+// Broadcast to all except specific clients
+Network.broadcastExcept(new String[]{senderId}, message);
+```
+
+### Server Implementation
+
+```java
+public class MyServer extends Server {
+    @Override
+    public void onUserConnected(NetworkConnection connection) {
+        System.out.println("User connected: " + connection.getId());
+    }
+
+    @Override
+    public void onUserDisconnected(NetworkConnection connection) {
+        System.out.println("User disconnected: " + connection.getId());
+    }
+}
+
+// Start the server
+Network.setSerializer(new JsonSerializer());
+MyServer server = new MyServer();
+server.start("localhost", 8080);
+```
+
+### Client Implementation
+
+```java
+public class MyClient extends Client {
+    @Override
+    public void onConnected() {
+        System.out.println("Connected to server");
+        send(new LoginMessage("username"));
+    }
+
+    @Override
+    public void onDisconnected() {
+        System.out.println("Disconnected from server");
+    }
+}
+
+// Connect the client
+Network.setSerializer(new JsonSerializer());
+MyClient client = new MyClient();
+client.connect("localhost", 8080);
+```
+
 ### Chat Example
 
-A complete chat system example is included to demonstrate the library's capabilities. The example showcases client connection management, username registration, real-time messaging, and system notifications.
+A complete chat example is included:
 
 ```bash
 # Build and run the chat server
@@ -49,72 +138,64 @@ A complete chat system example is included to demonstrate the library's capabili
 java -jar build/libs/chat-server-1.0.0.jar
 
 # Build and run the chat client (in another terminal)
-./gradlew chatClientJar  
+./gradlew chatClientJar
 java -jar build/libs/chat-client-1.0.0.jar
 ```
 
-For detailed implementation guidance, see the [Chat Example Documentation](https://github.com/nichnet/netplay/wiki/Chat-Example).
+## Custom Serializers
 
-## Documentation
+Implement the `Serializer` interface to use your own serialization:
 
-For comprehensive guides, tutorials, and API reference, visit the [Netplay Wiki](https://github.com/nichnet/netplay/wiki).
+```java
+public class MySerializer implements Serializer {
+    @Override
+    public byte[] serialize(Object obj) {
+        // Your serialization logic
+    }
 
-## Architecture
+    @Override
+    public <T> T deserialize(byte[] data, Class<T> clazz) {
+        // Your deserialization logic
+    }
+}
 
-### Package Structure
-
-Organize your project with clear separation between client, server, and shared components:
-
-```
-src/
-├── com/yourapp/shared/
-│   ├── whatever../
-│   ├── Constants.java
-│   └── network/
-│       ├── messages/
-│       └── actions/
-├── com/yourapp/server/
-│   ├── whatever../
-│   └── network/
-│       ├── actions/
-|       └── MyServer.java
-└── com/yourapp/client/
-    ├── whatever../
-    └── network/
-        ├── actions/
-        └── MyClient.java
+Network.setSerializer(new MySerializer());
 ```
 
 ## Requirements
 
 - Java 11 or higher
 - Gradle (for building)
-- Reflections library (org.reflections:reflections) - included as dependency
+- Gson (included as dependency)
+
+## Message Size Limits
+
+- **Server (outgoing)**: No size limit. The server can send messages of any size to clients.
+- **Client (incoming)**: 8KB read buffer. Large messages are accumulated incrementally, so there is no practical limit on incoming message size.
+- **Client (outgoing)**: No size limit. Messages are written directly to the socket.
+
+This design allows the server to send large payloads (e.g., room data with hundreds of tiles) without chunking.
 
 ## Key Classes
 
+- **`Network`**: Static API for handler registration and message sending
+- **`Serializer`**: Interface for pluggable serialization
+- **`JsonSerializer`**: Gson-based serializer implementation
 - **`Server`**: Abstract base class for server implementation
-- **`Client`**: Abstract base class for client implementation  
+- **`Client`**: Abstract base class for client implementation
 - **`NetworkConnection`**: Represents a client connection on the server
-- **`NetworkMessage`**: Container for all network messages
-- **`NetworkSerializable`**: Base class for serializable message content
-- **`NetworkMessageRegistry`**: Manages message type registration and creation
-- **`NetworkActions`**: Base class for organizing action handlers
 
 ## Contributing
 
-Issues and feature requests are welcome! Please feel free to:
-- Report bugs or performance issues
-- Suggest new features or improvements
-- Submit questions about implementation
+Issues and feature requests are welcome!
 
 ## License
 
 This project is distributed under a custom license:
 
-- ✅ **Permitted**: Use in your applications (commercial or non-commercial) with attribution
-- ✅ **Permitted**: Modify for your own use
-- ❌ **Not Permitted**: Redistribution of source code or modified versions
-- ❌ **Not Permitted**: Publishing forks or derivatives
+- Permitted: Use in your applications (commercial or non-commercial) with attribution
+- Permitted: Modify for your own use
+- Not Permitted: Redistribution of source code or modified versions
+- Not Permitted: Publishing forks or derivatives
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.

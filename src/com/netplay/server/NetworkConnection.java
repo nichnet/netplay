@@ -12,13 +12,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * Represents a single connected client on the server.
  */
 public class NetworkConnection {
-    private static final int BUFFER_SIZE = 8192;
+    private static final int READ_BUFFER_SIZE = 8192;
 
     private final String id;
     private final SocketChannel channel;
     private final ByteBuffer readBuffer;
-    private final ByteBuffer writeBuffer;
     private final Queue<ByteBuffer> writeQueue;
+    private ByteBuffer currentWriteBuffer;
     private boolean connected;
 
     // Buffer for accumulating partial messages
@@ -27,9 +27,9 @@ public class NetworkConnection {
     public NetworkConnection(String id, SocketChannel channel) {
         this.id = id;
         this.channel = channel;
-        this.readBuffer = ByteBuffer.allocate(BUFFER_SIZE);
-        this.writeBuffer = ByteBuffer.allocate(BUFFER_SIZE);
+        this.readBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE);
         this.writeQueue = new ConcurrentLinkedQueue<>();
+        this.currentWriteBuffer = null;
         this.connected = true;
         this.messageBuffer = new StringBuilder();
     }
@@ -122,18 +122,19 @@ public class NetworkConnection {
      * @return true if there are more writes pending
      */
     public boolean processWrites() throws IOException {
-        if (writeBuffer.position() == 0) {
-            ByteBuffer nextMessage = writeQueue.poll();
-            if (nextMessage == null) {
+        // Get next message if we don't have one in progress
+        if (currentWriteBuffer == null || !currentWriteBuffer.hasRemaining()) {
+            currentWriteBuffer = writeQueue.poll();
+            if (currentWriteBuffer == null) {
                 return false;
             }
-            writeBuffer.put(nextMessage);
-            writeBuffer.flip();
         }
 
-        channel.write(writeBuffer);
-        if (!writeBuffer.hasRemaining()) {
-            writeBuffer.clear();
+        // Write directly from the message buffer (no size limit)
+        channel.write(currentWriteBuffer);
+
+        if (!currentWriteBuffer.hasRemaining()) {
+            currentWriteBuffer = null;
             return !writeQueue.isEmpty();
         }
 
