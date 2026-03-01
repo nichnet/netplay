@@ -1,23 +1,24 @@
 package com.netplay.example.shared.messages;
 
-import com.netplay.shared.NetworkSerializable;
-import com.netplay.shared.NetworkSerializableProperty;
-
-public class NetworkMessageNotification implements NetworkSerializable {
+public class NetworkMessageNotification {
     private String message;
 
-    public NetworkMessageNotification() {} // Required for factory
+    public NetworkMessageNotification() {}
 
     public NetworkMessageNotification(String message) {
         this.message = message;
     }
 
-    @NetworkSerializableProperty(0)
-    public String getMessage() { return message; }
+    public String getMessage() {
+        return message;
+    }
 
+    public void setMessage(String message) {
+        this.message = message;
+    }
 
     @Override
     public String toString() {
-        return "Notification{message='" + getMessage() + "'}";
+        return "Notification{message='" + message + "'}";
     }
 }

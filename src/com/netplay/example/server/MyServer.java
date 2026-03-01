@@ -1,10 +1,9 @@
 package com.netplay.example.server;
 
-import com.netplay.example.shared.Constants;
 import com.netplay.example.shared.messages.NetworkMessageNotification;
 import com.netplay.server.NetworkConnection;
 import com.netplay.server.Server;
-import com.netplay.shared.messages.NetworkMessage;
+import com.netplay.shared.Network;
 
 import java.util.HashMap;
 
@@ -18,23 +17,19 @@ public class MyServer extends Server {
 
     @Override
     public void onUserConnected(NetworkConnection connection) {
-        users.put(connection.getId(), null); // Initialize with no username yet
-        System.out.println("User connected:" + connection + " (waiting for login)");
-        // Note: Join notification will be sent after login message is received
+        users.put(connection.getId(), null);
+        System.out.println("User connected: " + connection + " (waiting for login)");
     }
 
     @Override
     public void onUserDisconnected(NetworkConnection connection) {
         String username = users.get(connection.getId());
-        System.out.println("User disconnected:" + connection);
+        System.out.println("User disconnected: " + connection);
 
-        // Notify all remaining connected clients about the user leaving
         if (username != null) {
             String leaveMessage = username + " left the chat";
-
             NetworkMessageNotification notification = new NetworkMessageNotification(leaveMessage);
-            NetworkMessage networkMessage = new NetworkMessage(Constants.NETWORK_MESSAGE_NOTIFICATION, notification);
-            sendMessageBroadcast(networkMessage);
+            Network.broadcast(notification);
             users.remove(connection.getId());
         }
     }

@@ -1,31 +1,34 @@
 package com.netplay.example.shared.messages;
 
-import com.netplay.shared.NetworkSerializable;
-import com.netplay.shared.NetworkSerializableProperty;
+public class NetworkMessageChat {
+    private String sender;
+    private String message;
 
-public class NetworkMessageChat implements NetworkSerializable {
-    private String sender, message;
-
-    public NetworkMessageChat() {} // Required for factory
+    public NetworkMessageChat() {}
 
     public NetworkMessageChat(String sender, String message) {
         this.sender = sender;
         this.message = message;
     }
 
+    public String getSender() {
+        return sender;
+    }
+
     public void setSender(String sender) {
         this.sender = sender;
     }
 
-    @NetworkSerializableProperty(0)
-    public String getSender() { return sender; }
+    public String getMessage() {
+        return message;
+    }
 
-    @NetworkSerializableProperty(1)
-    public String getMessage() { return message; }
-
+    public void setMessage(String message) {
+        this.message = message;
+    }
 
     @Override
     public String toString() {
-        return "ChatMessage{sender='" + getSender() + "', message='" + getMessage() + "'}";
+        return "ChatMessage{sender='" + sender + "', message='" + message + "'}";
     }
 }
