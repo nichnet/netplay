@@ -1,7 +1,6 @@
 package com.netplay.example.client;
 
 import com.netplay.client.Client;
-import com.netplay.example.shared.messages.NetworkMessageChat;
 import com.netplay.example.shared.messages.NetworkMessageLogin;
 
 public class MyClient extends Client {
@@ -20,6 +19,11 @@ public class MyClient extends Client {
         if (username != null) {
             sendLoginMessage(username);
         }
+    }
+
+    @Override
+    public void onConnectionFailed() {
+        System.out.println("Failed to connect to server.");
     }
 
     private void sendLoginMessage(String username) {

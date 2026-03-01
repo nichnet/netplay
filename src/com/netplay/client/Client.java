@@ -135,13 +135,17 @@ public abstract class Client {
         }
     }
 
-    private void onConnectedToServer() throws IOException {
-        if (!socketChannel.finishConnect()) {
-            return;
+    private void onConnectedToServer() {
+        try {
+            if (!socketChannel.finishConnect()) {
+                return;
+            }
+            socketChannel.register(selector, SelectionKey.OP_READ);
+            onConnected();
+        } catch (IOException e) {
+            connected = false;
+            onConnectionFailed();
         }
-
-        socketChannel.register(selector, SelectionKey.OP_READ);
-        onConnected();
     }
 
     /**
@@ -150,7 +154,12 @@ public abstract class Client {
     public abstract void onConnected();
 
     /**
-     * Called when disconnected from server.
+     * Called when initial connection to server fails (server unreachable).
+     */
+    public abstract void onConnectionFailed();
+
+    /**
+     * Called when disconnected from server after being connected.
      */
     public abstract void onDisconnected();
 
